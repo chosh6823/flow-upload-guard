@@ -5,7 +5,7 @@
  * 모든 쿼리는 파라미터 바인딩($1, $2)만 쓴다 — 문자열 연결은 한 군데도 없다.
  */
 
-import { pool, withTransaction, isUniqueViolation } from '../db';
+import { getPool, withTransaction, isUniqueViolation } from '../db';
 import { MAX_CUSTOM_EXTENSIONS } from '../config';
 import { invalidatePolicyCache } from './policy-cache';
 
@@ -35,7 +35,7 @@ const CUSTOM_EXTENSION_LOCK_KEY = 851_042;
 
 /** 전체 정책 조회. 고정 → 커스텀(추가 순) 정렬. */
 export async function listExtensions(): Promise<BlockedExtensionRow[]> {
-  const { rows } = await pool.query<{
+  const { rows } = await getPool().query<{
     id: string;
     extension: string;
     type: ExtensionType;
@@ -56,14 +56,14 @@ export async function listExtensions(): Promise<BlockedExtensionRow[]> {
  * (부분 인덱스 ix_blocked_extension_active 가 이 쿼리를 위해 존재한다)
  */
 export async function listBlockedExtensions(): Promise<string[]> {
-  const { rows } = await pool.query<{ extension: string }>(
+  const { rows } = await getPool().query<{ extension: string }>(
     `SELECT extension FROM blocked_extension WHERE is_blocked = TRUE`
   );
   return rows.map((r) => r.extension);
 }
 
 export async function countCustomExtensions(): Promise<number> {
-  const { rows } = await pool.query<{ count: string }>(
+  const { rows } = await getPool().query<{ count: string }>(
     `SELECT count(*)::text AS count FROM blocked_extension WHERE type = 'CUSTOM'`
   );
   return Number(rows[0]?.count ?? 0);
@@ -78,7 +78,7 @@ export async function countCustomExtensions(): Promise<number> {
  * (근거: CONSIDERATIONS.md §2-4)
  */
 export async function countBlockedExtensions(): Promise<number> {
-  const { rows } = await pool.query<{ count: string }>(
+  const { rows } = await getPool().query<{ count: string }>(
     `SELECT count(*)::text AS count FROM blocked_extension WHERE is_blocked = TRUE`
   );
   return Number(rows[0]?.count ?? 0);

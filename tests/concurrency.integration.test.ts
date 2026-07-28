@@ -28,9 +28,9 @@ if (!hasDb) {
 }
 
 /**
- * DB 모듈은 import 시점에 커넥션 풀을 만들고, DATABASE_URL 이 없으면 던진다.
- * 파일 최상단에서 정적 import 하면 describe.skip 이어도 모듈 평가 단계에서 죽는다.
- * → DB 가 있을 때만 beforeAll 에서 동적으로 불러온다.
+ * DB 모듈은 첫 getPool() 호출 시점에 풀을 만들고, DATABASE_URL 이 없으면 던진다.
+ * 모듈 평가만으로 죽지는 않지만, DB 가 없는 환경에서 이 파일이 skip 되는 동안
+ * 불필요한 모듈 평가를 하지 않도록 beforeAll 에서 동적으로 불러온다.
  */
 type Repo = typeof import('@/lib/extension/repository');
 type Db = typeof import('@/lib/db');
@@ -40,8 +40,8 @@ let db: Db;
 let MAX_CUSTOM_EXTENSIONS = 200;
 
 async function clearCustom(): Promise<void> {
-  await db.pool.query(`DELETE FROM blocked_extension WHERE type = 'CUSTOM'`);
-  await db.pool.query(`DELETE FROM extension_policy_audit`);
+  await db.getPool().query(`DELETE FROM blocked_extension WHERE type = 'CUSTOM'`);
+  await db.getPool().query(`DELETE FROM extension_policy_audit`);
 }
 
 suite('동시성', () => {
@@ -57,7 +57,7 @@ suite('동시성', () => {
 
   afterAll(async () => {
     await clearCustom();
-    await db.pool.end();
+    await db.getPool().end();
   });
 
   it('같은 확장자를 20번 동시에 추가해도 정확히 1개만 저장된다', async () => {

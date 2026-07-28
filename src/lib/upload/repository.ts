@@ -5,7 +5,7 @@
  * 정책이 실제로 작동하는지, 누가 우회를 시도하는지는 이 로그로만 알 수 있다.
  */
 
-import { pool } from '../db';
+import { getPool } from '../db';
 import type { SniffedType } from './signature';
 import type { RejectReason } from './validate';
 
@@ -42,7 +42,7 @@ export async function recordUpload(
   input: UploadRecordInput
 ): Promise<string | null> {
   try {
-    const { rows } = await pool.query<{ id: string }>(
+    const { rows } = await getPool().query<{ id: string }>(
       `INSERT INTO upload_record
          (original_name, stored_name, size_bytes, status,
           reject_reason, matched_extension, sniffed_type)
@@ -67,7 +67,7 @@ export async function recordUpload(
 
 /** 최근 업로드 시도 목록. 화면 하단의 "최근 기록"에 쓴다. */
 export async function listRecentUploads(limit = 15): Promise<UploadRecordRow[]> {
-  const { rows } = await pool.query(
+  const { rows } = await getPool().query(
     `SELECT id, original_name, stored_name, size_bytes, status,
             reject_reason, matched_extension, sniffed_type, created_at
        FROM upload_record

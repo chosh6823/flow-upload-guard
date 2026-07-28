@@ -43,10 +43,23 @@ function createPool(): Pool {
   });
 }
 
-export const pool: Pool = globalThis.__uploadGuardPool ?? createPool();
-
-if (process.env.NODE_ENV !== 'production') {
-  globalThis.__uploadGuardPool = pool;
+/**
+ * 커넥션 풀을 얻는다. **첫 호출 시점에** 만든다.
+ *
+ * 모듈 최상위에서 풀을 만들면, 모듈을 import 하는 것만으로 DATABASE_URL 을
+ * 요구하게 된다. `next build` 는 라우트/페이지 모듈을 실제로 import 해서
+ * 설정(dynamic, runtime 등)을 읽으므로, 빌드 환경에 DB 정보가 없으면
+ * 코드가 한 줄도 실행되기 전에 빌드가 통째로 실패한다.
+ *   → "Failed to collect page data for /api/upload"
+ *
+ * 빌드는 DB 없이도 되어야 한다. DB 가 필요한 시점은 요청이 들어왔을 때뿐이고,
+ * 그때 DATABASE_URL 이 없으면 그 요청만 500 으로 실패하면 된다.
+ */
+export function getPool(): Pool {
+  // 개발 서버는 HMR 마다 모듈을 다시 평가하므로 globalThis 에 붙여 둔다.
+  // 서버리스에서도 인스턴스가 살아 있는 동안은 그대로 재사용된다.
+  globalThis.__uploadGuardPool ??= createPool();
+  return globalThis.__uploadGuardPool;
 }
 
 /**
@@ -56,7 +69,7 @@ if (process.env.NODE_ENV !== 'production') {
 export async function withTransaction<T>(
   fn: (client: import('pg').PoolClient) => Promise<T>
 ): Promise<T> {
-  const client = await pool.connect();
+  const client = await getPool().connect();
   try {
     await client.query('BEGIN');
     const result = await fn(client);
