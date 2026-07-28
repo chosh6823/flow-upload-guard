@@ -18,12 +18,27 @@ declare global {
   var __uploadGuardPool: Pool | undefined;
 }
 
+/**
+ * 연결 문자열을 찾는다.
+ *
+ * POSTGRES_URL 을 함께 보는 이유:
+ *   Vercel Storage(Neon 통합)로 DB 를 붙이면 환경변수가 자동 주입되는데,
+ *   통합 버전에 따라 이름이 DATABASE_URL 이 아니라 POSTGRES_URL 이다.
+ *   둘 다 받아 두면 대시보드에서 변수를 손으로 복제할 필요가 없다.
+ *   (POSTGRES_URL 이 pooler 주소다. POSTGRES_URL_NON_POOLING 은 직결이라 쓰지 않는다)
+ */
+export function resolveConnectionString(): string | undefined {
+  return process.env.DATABASE_URL || process.env.POSTGRES_URL;
+}
+
 function createPool(): Pool {
-  const connectionString = process.env.DATABASE_URL;
+  const connectionString = resolveConnectionString();
 
   if (!connectionString) {
     throw new Error(
-      'DATABASE_URL 이 설정되지 않았습니다. .env.example 을 참고해 .env 를 만들어 주세요.'
+      'DATABASE_URL(또는 POSTGRES_URL)이 설정되지 않았습니다. ' +
+        '로컬은 .env.example 을 참고해 .env 를 만들고, ' +
+        'Vercel 은 Storage 연결 또는 Environment Variables 등록이 필요합니다.'
     );
   }
 

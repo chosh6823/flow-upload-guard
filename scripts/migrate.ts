@@ -14,11 +14,12 @@ import path from 'node:path';
 import { Client } from 'pg';
 
 async function main(): Promise<void> {
-  const connectionString = process.env.DATABASE_URL;
+  // Vercel Storage 는 POSTGRES_URL 로 주입하기도 한다. (src/lib/db.ts 와 같은 규칙)
+  const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 
   if (!connectionString) {
     console.error(
-      'DATABASE_URL 이 없습니다. .env.example 을 복사해 .env 를 만들어 주세요.'
+      'DATABASE_URL(또는 POSTGRES_URL)이 없습니다. .env.example 을 복사해 .env 를 만들어 주세요.'
     );
     process.exit(1);
   }
